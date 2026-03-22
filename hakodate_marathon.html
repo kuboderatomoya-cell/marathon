@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>函館マラソン トレーニング管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --orange: #E05A2B;
+  --orange-light: #FDF0EB;
+  --orange-mid: #F0997B;
+  --blue: #185FA5;
+  --blue-light: #EAF2FB;
+  --teal: #0F6E56;
+  --teal-light: #E3F5EE;
+  --teal-mid: #5DCAA5;
+  --amber: #BA7517;
+  --amber-light: #FBF0DC;
+  --green: #3B6D11;
+  --green-light: #EBF4DE;
+  --red-light: #FDF0F0;
+  --red: #A32D2D;
+  --bg: #F8F6F2;
+  --surface: #FFFFFF;
+  --surface2: #F2EFE9;
+  --border: rgba(0,0,0,0.09);
+  --border-mid: rgba(0,0,0,0.14);
+  --text: #1A1714;
+  --text2: #6B6560;
+  --text3: #9C9894;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── Layout ── */
+.page { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+/* ── Header ── */
+.site-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 1.75rem; gap: 1rem;
+}
+.site-header-left h1 {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+}
+.site-header-left p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+.race-countdown {
+  background: var(--orange); color: white; border-radius: var(--radius-sm);
+  padding: 8px 14px; text-align: center; flex-shrink: 0;
+}
+.race-countdown .days { font-size: 26px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; }
+.race-countdown .days-label { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+/* ── Goal banner ── */
+.goal-banner {
+  background: var(--surface); border: 1.5px solid var(--orange-mid);
+  border-radius: var(--radius); padding: 14px 18px; margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 14px;
+}
+.goal-icon { font-size: 28px; flex-shrink: 0; }
+.goal-text { font-size: 15px; font-weight: 700; color: var(--orange); }
+.goal-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+/* ── Stats ── */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+.stat-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 10px; text-align: center;
+}
+.stat-num { font-size: 22px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+.stat-label { font-size: 11px; color: var(--text2); margin-top: 3px; }
+.stat-card.highlight .stat-num { color: var(--orange); }
+
+/* ── Progress ── */
+.progress-section { margin-bottom: 1.5rem; }
+.progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text2); }
+.progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--orange-mid), var(--orange));
+  border-radius: 4px; transition: width 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Chart ── */
+.chart-section {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px; margin-bottom: 1.75rem;
+}
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.chart-title { font-size: 13px; font-weight: 700; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
+.chart-total { font-size: 13px; font-weight: 700; color: var(--orange); font-family: 'DM Mono', monospace; }
+.bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 90px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; position: relative; }
+.bar {
+  width: 100%; border-radius: 4px 4px 0 0; min-height: 3px;
+  transition: height 0.4s cubic-bezier(.4,0,.2,1);
+  cursor: default;
+  position: relative;
+}
+.bar:hover::after {
+  content: attr(data-km) 'km';
+  position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white; font-size: 11px; padding: 3px 7px;
+  border-radius: 5px; white-space: nowrap; font-family: 'DM Mono', monospace;
+  pointer-events: none;
+}
+.bar-label { font-size: 9px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
+
+/* ── Tabs ── */
+.tabs-wrap { margin-bottom: 1.25rem; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { height: 0; }
+.tab {
+  padding: 7px 16px; border-radius: 20px;
+  border: 0.5px solid var(--border-mid);
+  font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+  background: var(--surface); color: var(--text2);
+  transition: all 0.15s; flex-shrink: 0;
+}
+.tab:hover { background: var(--surface2); }
+.tab.active { background: var(--orange); color: white; border-color: var(--orange); }
+
+/* ── Week sections ── */
+.week-section { display: none; }
+.week-section.active { display: block; }
+.week-label {
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── Day card ── */
+.day-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.day-card.completed { background: var(--teal-light); border-color: var(--teal-mid); }
+.day-card.is-rest { background: var(--surface2); }
+
+.checkbox {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--border-mid); cursor: pointer; flex-shrink: 0;
+  margin-top: 1px; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; background: var(--surface);
+}
+.checkbox:hover { border-color: var(--teal-mid); }
+.checkbox.checked { background: var(--teal); border-color: var(--teal); }
+.checkbox.checked::after {
+  content: ''; width: 6px; height: 11px;
+  border: 2.5px solid white; border-top: none; border-left: none;
+  transform: rotate(45deg) translateY(-2px); display: block;
+}
+
+.day-info { flex: 1; min-width: 0; }
+.day-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.day-date { font-size: 14px; font-weight: 700; color: var(--text); }
+.day-badge {
+  font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 700;
+}
+.badge-long { background: var(--blue-light); color: var(--blue); }
+.badge-tempo { background: var(--amber-light); color: var(--amber); }
+.badge-interval { background: var(--red-light); color: var(--red); }
+.badge-easy { background: var(--green-light); color: var(--green); }
+.badge-rest { background: var(--surface2); color: var(--text3); }
+.badge-race { background: var(--orange-light); color: var(--orange); }
+.km-badge {
+  font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace;
+  color: var(--orange); background: var(--orange-light); padding: 2px 8px; border-radius: 20px;
+}
+
+.day-menu { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 10px; }
+.day-menu strong { color: var(--text); font-weight: 700; }
+
+/* ── KM input ── */
+.km-row { display: flex; align-items: center; gap: 8px; }
+.km-input-wrap { position: relative; }
+.km-input {
+  width: 80px; padding: 6px 10px; border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); font-size: 14px; font-weight: 500;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface); color: var(--text); text-align: right;
+  transition: border-color 0.15s;
+}
+.km-input:focus { outline: none; border-color: var(--orange); }
+.km-unit { font-size: 13px; color: var(--text2); }
+.km-saved {
+  font-size: 12px; color: var(--teal); opacity: 0;
+  transition: opacity 0.3s; font-weight: 500;
+}
+.km-saved.show { opacity: 1; }
+
+/* ── Principles ── */
+.principles-section { margin: 1.75rem 0 1.5rem; }
+.principles-title { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+.principle-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.principle { padding: 7px 13px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.p-must { background: var(--orange-light); color: var(--orange); }
+.p-ok { background: var(--teal-light); color: var(--teal); }
+.p-warn { background: var(--amber-light); color: var(--amber); }
+
+/* ── Pace grid ── */
+.pace-section { margin-bottom: 2rem; }
+.pace-title { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+.pace-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.pace-card {
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border); background: var(--surface);
+}
+.pace-card .p-label { font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+.pace-card .p-val { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); }
+.pace-card.p-race { background: var(--orange-light); border-color: var(--orange-mid); }
+.pace-card.p-race .p-val { color: var(--orange); }
+
+/* ── Footer ── */
+.footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 2.5rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .site-header { flex-direction: column; }
+  .race-countdown { align-self: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="site-header">
+    <div class="site-header-left">
+      <h1>🏃 函館マラソン</h1>
+      <p>トレーニング管理 ／ サブ4達成プラン（3月〜6月）</p>
+    </div>
+    <div class="race-countdown">
+      <div class="days" id="countdown-days">—</div>
+      <div class="days-label">日後 本番</div>
+    </div>
+  </div>
+
+  <!-- Goal -->
+  <div class="goal-banner">
+    <div class="goal-icon">🎯</div>
+    <div>
+      <div class="goal-text">目標：サブ4（レースペース 5:40/km）</div>
+      <div class="goal-sub">函館マラソン 2025 — 達成確率：高</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card highlight"><div class="stat-num" id="s-done">0</div><div class="stat-label">完了セッション</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-pct">0%</div><div class="stat-label">進捗率</div></div>
+    <div class="stat-card highlight"><div class="stat-num" id="s-km">0</div><div class="stat-label">総走行 km</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-streak">0</div><div class="stat-label">連続達成</div></div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section">
+    <div class="progress-header">
+      <span>全体進捗</span>
+      <span id="prog-label">0 / 0 セッション</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-section">
+    <div class="chart-header">
+      <div class="chart-title">走行距離グラフ</div>
+      <div class="chart-total" id="chart-total">合計 0 km</div>
+    </div>
+    <div class="bar-chart" id="bar-chart"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('march',this)">3月 導入期</div>
+      <div class="tab" onclick="switchTab('april',this)">4月 基礎強化</div>
+      <div class="tab" onclick="switchTab('may',this)">5月 強化期🔥</div>
+      <div class="tab" onclick="switchTab('june',this)">6月 仕上げ</div>
+      <div class="tab" onclick="switchTab('race',this)">レース週</div>
+    </div>
+  </div>
+
+  <div id="march" class="week-section active"></div>
+  <div id="april" class="week-section"></div>
+  <div id="may" class="week-section"></div>
+  <div id="june" class="week-section"></div>
+  <div id="race" class="week-section"></div>
+
+  <!-- Principles -->
+  <div class="principles-section">
+    <div class="principles-title">トレーニング原則</div>
+    <div class="principle-row">
+      <div class="principle p-must">木曜：絶対やる（最重要）</div>
+      <div class="principle p-must">土曜：距離を踏む</div>
+      <div class="principle p-must">火曜：週1でキツい練習</div>
+      <div class="principle p-ok">キツいのは週2回まで</div>
+      <div class="principle p-ok">疲れたらジョグに落とす</div>
+      <div class="principle p-warn">全部頑張るはNG</div>
+    </div>
+  </div>
+
+  <!-- Pace -->
+  <div class="pace-section">
+    <div class="pace-title">ペース基準（/km）</div>
+    <div class="pace-grid">
+      <div class="pace-card"><div class="p-label">回復ジョグ</div><div class="p-val">6:00〜6:30</div></div>
+      <div class="pace-card"><div class="p-label">ロング走</div><div class="p-val">5:50〜6:10</div></div>
+      <div class="pace-card"><div class="p-label">テンポ走</div><div class="p-val">5:20〜5:30</div></div>
+      <div class="pace-card p-race"><div class="p-label">レースペース</div><div class="p-val">5:40</div></div>
+      <div class="pace-card"><div class="p-label">インターバル</div><div class="p-val">4:50〜5:00</div></div>
+    </div>
+  </div>
+
+  <div class="footer">データはこのブラウザに自動保存されます ／ 函館マラソン がんばれ！🏅</div>
+</div>
+
+<script>
+const RACE_DATE = new Date('2025-06-22'); // 函館マラソン当日（要確認・変更可）
+
+const sessions = {
+  march: [
+    { id:'m1', date:'3/19 (水)', badge:'long', badgeLabel:'皇居ロング', menu:'皇居ラン 120分　<strong>6:00/km</strong> でゆっくり一定' },
+    { id:'m2', date:'3/20 (木)', badge:'easy', badgeLabel:'ジョグ/休み', menu:'30分ジョグ <strong>6:15/km</strong>、または休養' },
+    { id:'m3', date:'3/21 (金)', badge:'long', badgeLabel:'ロング', menu:'ロング 16km　<strong>6:00/km</strong>' },
+    { id:'m4', date:'3/22 (土)', badge:'easy', badgeLabel:'回復ジョグ', menu:'回復5km　<strong>6:30/km</strong>' },
+    { id:'m5', date:'3/23 (日)', badge:'easy', badgeLabel:'ジョグ', menu:'60分ジョグ　<strong>6:00/km</strong>' },
+    { id:'m6', date:'3/24 (月)', badge:'tempo', badgeLabel:'テンポ走', menu:'アップ2km → テンポ6km <strong>5:30/km</strong> → ダウン2km' },
+    { id:'m7', date:'3/25 (火)', badge:'easy', badgeLabel:'ジョグ', menu:'60分ジョグ' },
+    { id:'m8', date:'3/26 (水)', badge:'long', badgeLabel:'皇居ロング', menu:'皇居 120分　前半ゆる → 後半 <strong>5:40/km</strong>' },
+    { id:'m9', date:'3/27 (木)', badge:'rest', badgeLabel:'休養', menu:'完全休養' },
+    { id:'m10', date:'3/28 (金)', badge:'long', badgeLabel:'ロング', menu:'ロング 18km　<strong>6:00/km</strong>' },
+    { id:'m11', date:'3/29 (土)', badge:'easy', badgeLabel:'回復ジョグ', menu:'回復5km' },
+  ],
+  april: [
+    { id:'a1', date:'火曜（毎週）', badge:'tempo', badgeLabel:'テンポ走', menu:'アップ2km → テンポ <strong>6〜8km（5:25/km）</strong> → ダウン2km' },
+    { id:'a2', date:'木曜（毎週）', badge:'long', badgeLabel:'皇居ラン', menu:'前半60分：<strong>6:00/km</strong>　後半60分：<strong>5:45/km</strong>' },
+    { id:'a3', date:'土曜（毎週）', badge:'long', badgeLabel:'ロング', menu:'18〜20km　<strong>6:00/km</strong>　← 毎週このサイクル' },
+  ],
+  may: [
+    { id:'my1', date:'火曜①（奇数週）', badge:'interval', badgeLabel:'インターバル', menu:'1km × 5〜6本　<strong>4:55/km</strong>　レスト：2分' },
+    { id:'my2', date:'火曜②（偶数週）', badge:'tempo', badgeLabel:'テンポ走', menu:'テンポ 8〜10km　<strong>5:25/km</strong>' },
+    { id:'my3', date:'木曜（毎週）', badge:'long', badgeLabel:'皇居ラン', menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる　<em>「後半勝負」</em>' },
+    { id:'my4', date:'土曜（毎週）', badge:'long', badgeLabel:'ロング', menu:'22〜28km　ラスト5km：<strong>5:40/km（レースペース）</strong>' },
+  ],
+  june: [
+    { id:'j1', date:'火曜', badge:'tempo', badgeLabel:'テンポ走', menu:'テンポ 6km　<strong>5:30/km</strong>' },
+    { id:'j2', date:'木曜（皇居）', badge:'long', badgeLabel:'皇居ラン', menu:'前半ゆる → 後半レースペース <strong>5:40/km</strong>' },
+    { id:'j3', date:'土曜（テーパー）', badge:'long', badgeLabel:'距離を減らす', menu:'20km → 15kmへ距離を落とす' },
+  ],
+  race: [
+    { id:'r1', date:'月曜', badge:'easy', badgeLabel:'軽いジョグ', menu:'5km　ゆっくり' },
+    { id:'r2', date:'火曜', badge:'tempo', badgeLabel:'流し', menu:'3km + 流し100m×3　<strong>軽く速く</strong>' },
+    { id:'r3', date:'水曜', badge:'rest', badgeLabel:'完全休養', menu:'完全休養' },
+    { id:'r4', date:'木曜', badge:'easy', badgeLabel:'ジョグ', menu:'30分ジョグ　<strong>6:00/km</strong>' },
+    { id:'r5', date:'金曜', badge:'rest', badgeLabel:'休養', menu:'休養' },
+    { id:'r6', date:'土曜', badge:'easy', badgeLabel:'体を動かす', menu:'2km（体を動かすだけ）' },
+    { id:'r7', date:'日曜', badge:'race', badgeLabel:'🎯 本番！', menu:'<strong>函館マラソン 本番！</strong>　ペース：<strong>5:40/km</strong> → サブ4達成' },
+  ]
+};
+
+const badgeClass = { long:'badge-long', tempo:'badge-tempo', interval:'badge-interval', easy:'badge-easy', rest:'badge-rest', race:'badge-race' };
+
+function load(k, def) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : def; } catch(e){ return def; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+let checked = load('hkd2_checked', {});
+let kms = load('hkd2_kms', {});
+let kmTimers = {};
+
+// Countdown
+function updateCountdown() {
+  const now = new Date();
+  const diff = Math.ceil((RACE_DATE - now) / 86400000);
+  document.getElementById('countdown-days').textContent = diff > 0 ? diff : '🏅';
+}
+updateCountdown();
+
+function renderSection(key) {
+  const el = document.getElementById(key);
+  if (!el) return;
+  const list = sessions[key];
+  let html = '';
+  if (key === 'april' || key === 'may') html += '<div class="week-label">毎週のルーティン</div>';
+  list.forEach(s => {
+    const done = !!checked[s.id];
+    const isRest = s.badge === 'rest';
+    const km = kms[s.id] || '';
+    html += `
+    <div class="day-card ${done?'completed':''} ${isRest&&!done?'is-rest':''}">
+      <div class="checkbox ${done?'checked':''}" onclick="toggle('${s.id}')"></div>
+      <div class="day-info">
+        <div class="day-header">
+          <span class="day-date">${s.date}</span>
+          <span class="day-badge ${badgeClass[s.badge]}">${s.badgeLabel}</span>
+          ${km ? `<span class="km-badge">${km}km</span>` : ''}
+        </div>
+        <div class="day-menu">${s.menu}</div>
+        ${!isRest ? `
+        <div class="km-row">
+          <input class="km-input" type="number" min="0" max="99" step="0.1"
+            placeholder="0.0" value="${km}"
+            oninput="onKmInput('${s.id}', this.value)"
+            id="km-${s.id}" />
+          <span class="km-unit">km 走った</span>
+          <span class="km-saved" id="saved-${s.id}">✓ 保存</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function toggle(id) {
+  checked[id] = !checked[id];
+  save('hkd2_checked', checked);
+  updateAll();
+}
+
+function onKmInput(id, val) {
+  const num = parseFloat(val);
+  kms[id] = (val === '' || isNaN(num)) ? '' : Math.round(num * 10) / 10;
+  save('hkd2_kms', kms);
+  clearTimeout(kmTimers[id]);
+  kmTimers[id] = setTimeout(() => {
+    const el = document.getElementById('saved-' + id);
+    if (el) { el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1800); }
+    updateStats();
+    renderChart();
+    // re-render badge without full rebuild to avoid losing focus
+    const badge = document.querySelector(`#km-${id}`)?.closest('.day-info')?.querySelector('.km-badge');
+    const header = document.querySelector(`#km-${id}`)?.closest('.day-info')?.querySelector('.day-header');
+    if (header) {
+      let existing = header.querySelector('.km-badge');
+      if (kms[id]) {
+        if (!existing) { existing = document.createElement('span'); existing.className = 'km-badge'; header.appendChild(existing); }
+        existing.textContent = kms[id] + 'km';
+      } else if (existing) { existing.remove(); }
+    }
+  }, 500);
+}
+
+function updateStats() {
+  const all = Object.values(sessions).flat();
+  const nonRest = all.filter(s => s.badge !== 'rest');
+  const doneCount = nonRest.filter(s => checked[s.id]).length;
+  const pct = nonRest.length ? Math.round(doneCount / nonRest.length * 100) : 0;
+  const totalKm = Object.values(kms).reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+  const roundKm = Math.round(totalKm * 10) / 10;
+
+  document.getElementById('s-done').textContent = doneCount;
+  document.getElementById('s-pct').textContent = pct + '%';
+  document.getElementById('s-km').textContent = roundKm;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-label').textContent = `${doneCount} / ${nonRest.length} セッション`;
+
+  let streak = 0;
+  const allIds = all.filter(s => s.badge !== 'rest').map(s => s.id);
+  for (let i = allIds.length - 1; i >= 0; i--) {
+    if (checked[allIds[i]]) streak++; else break;
+  }
+  document.getElementById('s-streak').textContent = streak;
+}
+
+function renderChart() {
+  const all = Object.values(sessions).flat().filter(s => s.badge !== 'rest');
+  const vals = all.map(s => parseFloat(kms[s.id]) || 0);
+  const maxVal = Math.max(...vals, 1);
+  const totalKm = vals.reduce((a, b) => a + b, 0);
+  document.getElementById('chart-total').textContent = `合計 ${Math.round(totalKm * 10)/10} km`;
+
+  const chart = document.getElementById('bar-chart');
+  chart.innerHTML = all.map((s, i) => {
+    const h = Math.max(Math.round((vals[i] / maxVal) * 100), vals[i] > 0 ? 4 : 0);
+    const label = s.date.split(' ')[0];
+    const color = vals[i] > 0 ? 'var(--orange)' : 'var(--surface2)';
+    return `<div class="bar-col">
+      <div class="bar-wrap">
+        <div class="bar" style="height:${h}%;background:${color};" data-km="${vals[i]}"></div>
+      </div>
+      <div class="bar-label">${label}</div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(key, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.week-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(key).classList.add('active');
+}
+
+function updateAll() {
+  Object.keys(sessions).forEach(k => renderSection(k));
+  updateStats();
+  renderChart();
+}
+
+updateAll();
+</script>
+</body>
+</html>
