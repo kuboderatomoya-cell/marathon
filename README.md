@@ -1,2 +1,0 @@
-# marathon
-Training/Marathon tracker
