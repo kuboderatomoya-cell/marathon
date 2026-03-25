@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>トレーニング管理｜マラソン × Hyrox</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --orange:#E05A2B;--orange-light:#FDF0EB;--orange-mid:#F0997B;
+  --blue:#185FA5;--blue-light:#EAF2FB;
+  --teal:#0F6E56;--teal-light:#E3F5EE;--teal-mid:#5DCAA5;
+  --amber:#BA7517;--amber-light:#FBF0DC;
+  --green:#3B6D11;--green-light:#EBF4DE;
+  --purple:#6B3FA0;--purple-light:#F2ECFA;--purple-mid:#A07AD4;
+  --red-light:#FDF0F0;--red:#A32D2D;
+  --bg:#F8F6F2;--surface:#FFFFFF;--surface2:#F2EFE9;
+  --border:rgba(0,0,0,0.09);--border-mid:rgba(0,0,0,0.14);
+  --text:#1A1714;--text2:#6B6560;--text3:#9C9894;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+.page{max-width:740px;margin:0 auto;padding:1.75rem 1.25rem 6rem;}
+
+/* ─ Header ─ */
+.site-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;}
+.site-header h1{font-size:20px;font-weight:700;letter-spacing:-0.02em;}
+.site-header p{font-size:13px;color:var(--text2);margin-top:3px;}
+.countdowns{display:flex;gap:8px;flex-shrink:0;}
+.countdown{border-radius:var(--radius-sm);padding:7px 12px;text-align:center;}
+.countdown.marathon{background:var(--orange);color:white;}
+.countdown.hyrox{background:var(--purple);color:white;}
+.countdown .days{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
+.countdown .days-label{font-size:10px;opacity:0.85;margin-top:2px;}
+
+/* ─ Mode tabs (big) ─ */
+.mode-tabs{display:flex;gap:0;margin-bottom:1.5rem;background:var(--surface2);border-radius:var(--radius);padding:4px;}
+.mode-tab{flex:1;padding:10px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;text-align:center;transition:all 0.18s;color:var(--text3);border:none;background:transparent;}
+.mode-tab.active-marathon{background:var(--orange);color:white;}
+.mode-tab.active-hyrox{background:var(--purple);color:white;}
+
+/* ─ Views ─ */
+.view{display:none;}
+.view.active{display:block;}
+
+/* ─ Stats ─ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.25rem;}
+.stat-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 8px;text-align:center;}
+.stat-num{font-size:20px;font-weight:700;font-family:'DM Mono',monospace;}
+.stat-label{font-size:11px;color:var(--text2);margin-top:2px;}
+.hl-orange .stat-num{color:var(--orange);}
+.hl-purple .stat-num{color:var(--purple);}
+
+/* ─ Progress ─ */
+.progress-section{margin-bottom:1.25rem;}
+.progress-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--text2);}
+.progress-bar{height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:4px;transition:width 0.5s cubic-bezier(.4,0,.2,1);}
+.fill-orange{background:linear-gradient(90deg,var(--orange-mid),var(--orange));}
+.fill-purple{background:linear-gradient(90deg,var(--purple-mid),var(--purple));}
+
+/* ─ Chart ─ */
+.chart-section{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:1.5rem;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.chart-title{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;}
+.chart-total{font-size:13px;font-weight:700;font-family:'DM Mono',monospace;}
+.ct-orange{color:var(--orange);}
+.ct-purple{color:var(--purple);}
+.bar-chart{display:flex;align-items:flex-end;gap:3px;height:75px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;}
+.bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;position:relative;}
+.bar{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height 0.4s cubic-bezier(.4,0,.2,1);position:relative;}
+.bar:hover::after{content:attr(data-v);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:var(--text);color:white;font-size:11px;padding:3px 7px;border-radius:5px;white-space:nowrap;font-family:'DM Mono',monospace;pointer-events:none;}
+.bar-label{font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;}
+
+/* ─ Sub tabs ─ */
+.sub-tabs{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;margin-bottom:1.25rem;}
+.sub-tabs::-webkit-scrollbar{height:0;}
+.sub-tab{padding:6px 14px;border-radius:20px;border:0.5px solid var(--border-mid);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--surface);color:var(--text2);transition:all 0.15s;}
+.sub-tab:hover{background:var(--surface2);}
+.sub-tab.active-marathon{background:var(--orange);color:white;border-color:var(--orange);}
+.sub-tab.active-hyrox{background:var(--purple);color:white;border-color:var(--purple);}
+
+.week-section{display:none;}
+.week-section.active{display:block;}
+.week-label{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:9px;}
+
+/* ─ Day card ─ */
+.day-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:13px 15px;margin-bottom:9px;display:flex;align-items:flex-start;gap:12px;transition:border-color 0.2s,background 0.2s;}
+.day-card.done-m{background:var(--teal-light);border-color:var(--teal-mid);}
+.day-card.is-rest{background:var(--surface2);}
+/* Hyrox cards */
+.day-card.hyrox-card{border-left:3px solid var(--purple-mid);}
+.day-card.hyrox-card.done-h{background:var(--purple-light);border-color:var(--purple-mid);}
+
+.checkbox{width:22px;height:22px;border-radius:50%;border:2px solid var(--border-mid);cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;background:var(--surface);}
+.checkbox.chk-m{background:var(--teal);border-color:var(--teal);}
+.checkbox.chk-h{background:var(--purple);border-color:var(--purple);}
+.checkbox.chk-m::after,.checkbox.chk-h::after{content:'';width:6px;height:11px;border:2.5px solid white;border-top:none;border-left:none;transform:rotate(45deg) translateY(-2px);display:block;}
+
+.day-info{flex:1;min-width:0;}
+.day-header{display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap;}
+.day-date{font-size:14px;font-weight:700;}
+.day-badge{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:700;}
+.badge-long{background:var(--blue-light);color:var(--blue);}
+.badge-tempo{background:var(--amber-light);color:var(--amber);}
+.badge-interval{background:var(--red-light);color:var(--red);}
+.badge-easy{background:var(--green-light);color:var(--green);}
+.badge-rest{background:var(--surface2);color:var(--text3);}
+.badge-race{background:var(--orange-light);color:var(--orange);}
+.badge-hyrox{background:var(--purple-light);color:var(--purple);}
+.km-badge{font-size:11px;font-weight:700;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:20px;}
+.km-badge-m{color:var(--orange);background:var(--orange-light);}
+.km-badge-h{color:var(--purple);background:var(--purple-light);}
+
+.day-menu{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px;}
+.day-menu strong{color:var(--text);font-weight:700;}
+
+/* ─ Hyrox table ─ */
+.hyrox-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;border-radius:var(--radius-sm);overflow:hidden;}
+.hyrox-table th{background:var(--purple-light);color:var(--purple);font-weight:700;padding:6px 8px;text-align:left;font-size:11px;}
+.hyrox-table td{padding:5px 8px;border-bottom:0.5px solid var(--border);color:var(--text2);}
+.hyrox-table tr:last-child td{border-bottom:none;}
+.hyrox-table .num-col{color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;width:24px;}
+.run-row td{color:var(--orange)!important;font-weight:700;}
+
+/* ─ KM input ─ */
+.km-row{display:flex;align-items:center;gap:8px;}
+.km-input{width:78px;padding:5px 10px;border:1px solid var(--border-mid);border-radius:var(--radius-sm);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;background:var(--surface);color:var(--text);text-align:right;transition:border-color 0.15s;}
+.km-input:focus{outline:none;border-color:var(--purple);}
+.km-input.focus-m:focus{border-color:var(--orange);}
+.km-unit{font-size:13px;color:var(--text2);}
+
+/* ─ Hyrox reps input ─ */
+.sets-done-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.set-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--purple-mid);background:var(--surface);color:var(--purple);font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;}
+.set-btn.done-set{background:var(--purple);border-color:var(--purple);color:white;}
+.set-label{font-size:12px;color:var(--text2);}
+
+/* ─ Save bar ─ */
+.save-bar{position:sticky;bottom:0;z-index:100;background:rgba(248,246,242,0.96);backdrop-filter:blur(8px);border-top:0.5px solid var(--border);padding:10px 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.save-btn{border:none;border-radius:var(--radius-sm);padding:9px 22px;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all 0.15s;background:var(--orange);color:white;}
+.save-btn:hover{opacity:0.88;}
+.save-btn:active{transform:scale(0.97);}
+.save-btn.saved{background:var(--teal);}
+.save-status{font-size:12px;color:var(--text3);}
+.unsaved-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);display:inline-block;margin-right:5px;opacity:0;transition:opacity 0.2s;}
+.unsaved-dot.show{opacity:1;}
+
+/* ─ Section extras ─ */
+.section-title{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin:1.5rem 0 9px;}
+.principle-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:1.25rem;}
+.pill{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+.pill-orange{background:var(--orange-light);color:var(--orange);}
+.pill-teal{background:var(--teal-light);color:var(--teal);}
+.pill-amber{background:var(--amber-light);color:var(--amber);}
+.pill-purple{background:var(--purple-light);color:var(--purple);}
+.pace-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:7px;margin-bottom:1.5rem;}
+.pace-card{padding:10px 12px;border-radius:var(--radius-sm);border:0.5px solid var(--border);background:var(--surface);}
+.pace-card .pc-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
+.pace-card .pc-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text);}
+.pace-card.pc-race{background:var(--orange-light);border-color:var(--orange-mid);}
+.pace-card.pc-race .pc-val{color:var(--orange);}
+.footer{text-align:center;font-size:11px;color:var(--text3);margin-top:2rem;padding-top:1.25rem;border-top:0.5px solid var(--border);}
+@media(max-width:480px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .site-header{flex-direction:column;}
+  .countdowns{align-self:flex-start;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="site-header">
+    <div>
+      <h1>🏋️ トレーニング管理</h1>
+      <p>函館マラソン × Hyrox ／ 2025年3月〜6月</p>
+    </div>
+    <div class="countdowns">
+      <div class="countdown marathon">
+        <div class="days" id="cd-marathon">—</div>
+        <div class="days-label">日後 マラソン</div>
+      </div>
+      <div class="countdown hyrox">
+        <div class="days" id="cd-hyrox">—</div>
+        <div class="days-label">日後 Hyrox</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode switcher -->
+  <div class="mode-tabs">
+    <div class="mode-tab active-marathon" id="mtab-marathon" onclick="switchMode('marathon')">🏃 函館マラソン</div>
+    <div class="mode-tab" id="mtab-hyrox" onclick="switchMode('hyrox')">⚡ Hyrox</div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       MARATHON VIEW
+  ══════════════════════════════════════ -->
+  <div class="view active" id="view-marathon">
+    <div style="background:var(--surface);border:1.5px solid var(--orange-mid);border-radius:var(--radius);padding:11px 15px;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:26px;">🎯</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--orange);">目標：サブ4（レースペース 5:40/km）</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">函館マラソン 2025 — 達成確率：高</div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card hl-orange"><div class="stat-num" id="m-done">0</div><div class="stat-label">完了</div></div>
+      <div class="stat-card"><div class="stat-num" id="m-pct">0%</div><div class="stat-label">進捗率</div></div>
+      <div class="stat-card hl-orange"><div class="stat-num" id="m-km">0</div><div class="stat-label">総走行 km</div></div>
+      <div class="stat-card"><div class="stat-num" id="m-streak">0</div><div class="stat-label">連続達成</div></div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-header"><span>全体進捗</span><span id="m-prog-label">0 / 0</span></div>
+      <div class="progress-bar"><div class="progress-fill fill-orange" id="m-prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-header">
+        <div class="chart-title">走行距離グラフ</div>
+        <div class="chart-total ct-orange" id="m-chart-total">合計 0 km</div>
+      </div>
+      <div class="bar-chart" id="m-bar-chart"></div>
+    </div>
+
+    <div class="sub-tabs" id="marathon-tabs">
+      <div class="sub-tab active-marathon" onclick="switchSub('marathon','m-march',this)">3月 導入期</div>
+      <div class="sub-tab" onclick="switchSub('marathon','m-april',this)">4月 基礎強化</div>
+      <div class="sub-tab" onclick="switchSub('marathon','m-may',this)">5月 強化期🔥</div>
+      <div class="sub-tab" onclick="switchSub('marathon','m-june',this)">6月 仕上げ</div>
+      <div class="sub-tab" onclick="switchSub('marathon','m-race',this)">レース週</div>
+    </div>
+
+    <div id="m-march" class="week-section active"></div>
+    <div id="m-april" class="week-section"></div>
+    <div id="m-may" class="week-section"></div>
+    <div id="m-june" class="week-section"></div>
+    <div id="m-race" class="week-section"></div>
+
+    <div class="section-title">トレーニング原則</div>
+    <div class="principle-row">
+      <div class="pill pill-orange">木曜：絶対やる</div>
+      <div class="pill pill-orange">土曜：距離を踏む</div>
+      <div class="pill pill-orange">火曜：キツい練習</div>
+      <div class="pill pill-teal">週2回まで追い込む</div>
+      <div class="pill pill-teal">疲れたらジョグへ</div>
+      <div class="pill pill-amber">全部頑張るはNG</div>
+    </div>
+    <div class="section-title">ペース基準（/km）</div>
+    <div class="pace-grid">
+      <div class="pace-card"><div class="pc-label">回復ジョグ</div><div class="pc-val">6:00〜6:30</div></div>
+      <div class="pace-card"><div class="pc-label">ロング走</div><div class="pc-val">5:50〜6:10</div></div>
+      <div class="pace-card"><div class="pc-label">テンポ走</div><div class="pc-val">5:20〜5:30</div></div>
+      <div class="pace-card pc-race"><div class="pc-label">レースペース</div><div class="pc-val">5:40</div></div>
+      <div class="pace-card"><div class="pc-label">インターバル</div><div class="pc-val">4:50〜5:00</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       HYROX VIEW
+  ══════════════════════════════════════ -->
+  <div class="view" id="view-hyrox">
+    <div style="background:var(--surface);border:1.5px solid var(--purple-mid);border-radius:var(--radius);padding:11px 15px;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:26px;">⚡</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--purple);">Hyrox トレーニング</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">土曜日 ＋ 月曜日 毎週実施</div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card hl-purple"><div class="stat-num" id="h-done">0</div><div class="stat-label">完了</div></div>
+      <div class="stat-card"><div class="stat-num" id="h-pct">0%</div><div class="stat-label">進捗率</div></div>
+      <div class="stat-card hl-purple"><div class="stat-num" id="h-km">0</div><div class="stat-label">総 Run km</div></div>
+      <div class="stat-card"><div class="stat-num" id="h-streak">0</div><div class="stat-label">連続達成</div></div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-header"><span>Hyrox 全体進捗</span><span id="h-prog-label">0 / 0</span></div>
+      <div class="progress-bar"><div class="progress-fill fill-purple" id="h-prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-header">
+        <div class="chart-title">Run 距離グラフ（Hyrox）</div>
+        <div class="chart-total ct-purple" id="h-chart-total">合計 0 km</div>
+      </div>
+      <div class="bar-chart" id="h-bar-chart"></div>
+    </div>
+
+    <div class="sub-tabs" id="hyrox-tabs">
+      <div class="sub-tab active-hyrox" onclick="switchSub('hyrox','h-march',this)">3月</div>
+      <div class="sub-tab" onclick="switchSub('hyrox','h-april',this)">4月</div>
+      <div class="sub-tab" onclick="switchSub('hyrox','h-may',this)">5月</div>
+      <div class="sub-tab" onclick="switchSub('hyrox','h-june',this)">6月</div>
+    </div>
+
+    <div id="h-march" class="week-section active"></div>
+    <div id="h-april" class="week-section"></div>
+    <div id="h-may" class="week-section"></div>
+    <div id="h-june" class="week-section"></div>
+
+    <div class="section-title">Hyrox メニュー詳細</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;">
+      <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:10px;">🗓 土曜日メニュー</div>
+        <table class="hyrox-table">
+          <tr><th class="num-col">#</th><th>種目</th><th>内容</th></tr>
+          <tr class="run-row"><td class="num-col">1</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">2</td><td>バーピー</td><td>15回×3</td></tr>
+          <tr class="run-row"><td class="num-col">3</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">4</td><td>レッグプレス</td><td>12回×3</td></tr>
+          <tr class="run-row"><td class="num-col">5</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">6</td><td>Vスクワット</td><td>12回×3</td></tr>
+          <tr class="run-row"><td class="num-col">7</td><td>Run</td><td>1km</td></tr>
+        </table>
+      </div>
+      <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:10px;">🗓 月曜日メニュー</div>
+        <table class="hyrox-table">
+          <tr><th class="num-col">#</th><th>種目</th><th>内容</th></tr>
+          <tr class="run-row"><td class="num-col">1</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">2</td><td>ダンベルスラスター</td><td>10回×3</td></tr>
+          <tr class="run-row"><td class="num-col">3</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">4</td><td>ファーマーズキャリー</td><td>40m×3</td></tr>
+          <tr class="run-row"><td class="num-col">5</td><td>Run</td><td>1km</td></tr>
+          <tr><td class="num-col">6</td><td>ウォーキングランジ</td><td>20歩×3</td></tr>
+          <tr class="run-row"><td class="num-col">7</td><td>Run</td><td>1km</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="section-title">Hyrox 原則</div>
+    <div class="principle-row">
+      <div class="pill pill-purple">土曜：毎週固定</div>
+      <div class="pill pill-purple">月曜：毎週固定</div>
+      <div class="pill pill-teal">Run は1km × 4本</div>
+      <div class="pill pill-amber">各種目後 1分休憩</div>
+    </div>
+  </div>
+
+  <div class="footer">データはこのブラウザに自動保存されます ／ 函館マラソン × Hyrox がんばれ！🏅⚡</div>
+</div>
+
+<!-- Save bar -->
+<div class="save-bar">
+  <div class="save-status">
+    <span class="unsaved-dot" id="unsaved-dot"></span>
+    <span id="save-status-text">まだ未保存の変更はありません</span>
+  </div>
+  <button class="save-btn" id="save-btn" onclick="saveAll()">💾 保存する</button>
+</div>
+
+<script>
+// ── Dates ──────────────────────────────
+const MARATHON_DATE = new Date('2025-06-22');
+const HYROX_DATE    = new Date('2025-06-01'); // ※要確認・変更可
+
+function updateCountdowns(){
+  const now=new Date();
+  const dm=Math.ceil((MARATHON_DATE-now)/86400000);
+  const dh=Math.ceil((HYROX_DATE-now)/86400000);
+  document.getElementById('cd-marathon').textContent=dm>0?dm:'🏅';
+  document.getElementById('cd-hyrox').textContent=dh>0?dh:'⚡';
+}
+updateCountdowns();
+
+// ── Hyrox menu HTML helpers ──────────────
+function hyroxTable(type){
+  if(type==='sat'){
+    return `<table class="hyrox-table"><tr><th class="num-col">#</th><th>種目</th><th>内容</th><th>休憩</th></tr>
+    <tr class="run-row"><td class="num-col">1</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">2</td><td>バーピー</td><td>15回 × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">3</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">4</td><td>レッグプレス</td><td>12回 × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">5</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">6</td><td>Vスクワット</td><td>12回 × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">7</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    </table>`;
+  } else {
+    return `<table class="hyrox-table"><tr><th class="num-col">#</th><th>種目</th><th>内容</th><th>休憩</th></tr>
+    <tr class="run-row"><td class="num-col">1</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">2</td><td>ダンベルスラスター</td><td>10回 × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">3</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">4</td><td>ファーマーズキャリー</td><td>40m × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">5</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    <tr><td class="num-col">6</td><td>ウォーキングランジ</td><td>20歩 × 3</td><td>1分</td></tr>
+    <tr class="run-row"><td class="num-col">7</td><td>Run</td><td>トレッドミル 1km</td><td>1分</td></tr>
+    </table>`;
+  }
+}
+
+// ── Session data ────────────────────────
+// Types: 'run'=marathon run, 'rest'=rest, 'hyrox'=hyrox
+const MS = { // Marathon sessions
+  'm-march':[
+    {id:'mm01',date:'3/25 (火)',badge:'easy',bl:'ジョグ',type:'run',menu:'60分ジョグ　<strong>6:00/km</strong>'},
+    {id:'mm02',date:'3/26 (水)',badge:'long',bl:'皇居ロング',type:'run',menu:'皇居 120分　前半ゆる → 後半 <strong>5:40/km</strong>'},
+    {id:'mm03',date:'3/27 (木)',badge:'rest',bl:'休養',type:'rest',menu:'完全休養'},
+    {id:'mm04',date:'3/28 (金)',badge:'long',bl:'ロング',type:'run',menu:'ロング 18km　<strong>6:00/km</strong>'},
+    {id:'mm05',date:'3/29 (土)',badge:'easy',bl:'回復ジョグ',type:'run',menu:'回復 5km　<strong>6:30/km</strong>'},
+  ],
+  'm-april':[
+    {id:'ma01',date:'4/1 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'アップ2km → テンポ <strong>6〜8km（5:25/km）</strong> → ダウン2km'},
+    {id:'ma02',date:'4/3 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半60分：<strong>6:00/km</strong>　後半60分：<strong>5:45/km</strong>'},
+    {id:'ma03',date:'4/5 (土)',badge:'long',bl:'ロング',type:'run',menu:'18〜20km　<strong>6:00/km</strong>'},
+    {id:'ma04',date:'4/8 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'アップ2km → テンポ <strong>7km（5:25/km）</strong> → ダウン2km'},
+    {id:'ma05',date:'4/10 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半60分：<strong>6:00/km</strong>　後半60分：<strong>5:45/km</strong>'},
+    {id:'ma06',date:'4/12 (土)',badge:'long',bl:'ロング',type:'run',menu:'20km　<strong>6:00/km</strong>'},
+    {id:'ma07',date:'4/15 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'アップ2km → テンポ <strong>8km（5:25/km）</strong> → ダウン2km'},
+    {id:'ma08',date:'4/17 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半60分：<strong>6:00/km</strong>　後半60分：<strong>5:45/km</strong>'},
+    {id:'ma09',date:'4/19 (土)',badge:'long',bl:'ロング',type:'run',menu:'20km　<strong>6:00/km</strong>'},
+    {id:'ma10',date:'4/22 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'アップ2km → テンポ <strong>8km（5:25/km）</strong> → ダウン2km'},
+    {id:'ma11',date:'4/24 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半60分：<strong>6:00/km</strong>　後半60分：<strong>5:45/km</strong>'},
+    {id:'ma12',date:'4/26 (土)',badge:'long',bl:'ロング',type:'run',menu:'20km　<strong>6:00/km</strong>'},
+  ],
+  'm-may':[
+    {id:'my01',date:'5/1 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる'},
+    {id:'my02',date:'5/3 (土)',badge:'long',bl:'ロング',type:'run',menu:'22km　ラスト5km：<strong>5:40/km</strong>'},
+    {id:'my03',date:'5/6 (火)',badge:'interval',bl:'インターバル',type:'run',menu:'1km × 5本　<strong>4:55/km</strong>　レスト：2分'},
+    {id:'my04',date:'5/8 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる'},
+    {id:'my05',date:'5/10 (土)',badge:'long',bl:'ロング',type:'run',menu:'24km　ラスト5km：<strong>5:40/km</strong>'},
+    {id:'my06',date:'5/13 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'テンポ 9km　<strong>5:25/km</strong>'},
+    {id:'my07',date:'5/15 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる'},
+    {id:'my08',date:'5/17 (土)',badge:'long',bl:'ロング',type:'run',menu:'26km　ラスト5km：<strong>5:40/km</strong>'},
+    {id:'my09',date:'5/20 (火)',badge:'interval',bl:'インターバル',type:'run',menu:'1km × 6本　<strong>4:55/km</strong>　レスト：2分'},
+    {id:'my10',date:'5/22 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる'},
+    {id:'my11',date:'5/24 (土)',badge:'long',bl:'ロング',type:'run',menu:'28km　ラスト5km：<strong>5:40/km</strong>'},
+    {id:'my12',date:'5/27 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'テンポ 10km　<strong>5:25/km</strong>'},
+    {id:'my13',date:'5/29 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'5km <strong>6:00</strong> → 5km <strong>5:50</strong> → 5km <strong>5:40</strong> → 余力で上げる'},
+    {id:'my14',date:'5/31 (土)',badge:'long',bl:'ロング',type:'run',menu:'26km　ラスト5km：<strong>5:40/km</strong>'},
+  ],
+  'm-june':[
+    {id:'mj01',date:'6/3 (火)',badge:'tempo',bl:'テンポ走',type:'run',menu:'テンポ 6km　<strong>5:30/km</strong>'},
+    {id:'mj02',date:'6/5 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半ゆる → 後半レースペース <strong>5:40/km</strong>'},
+    {id:'mj03',date:'6/7 (土)',badge:'long',bl:'ロング',type:'run',menu:'20km　<strong>6:00/km</strong>'},
+    {id:'mj04',date:'6/10 (火)',badge:'easy',bl:'ジョグ',type:'run',menu:'40分ジョグ'},
+    {id:'mj05',date:'6/12 (木)',badge:'long',bl:'皇居ラン',type:'run',menu:'前半ゆる → 後半 <strong>5:40/km</strong>'},
+    {id:'mj06',date:'6/14 (土)',badge:'long',bl:'距離減',type:'run',menu:'15km　<strong>6:00/km</strong>（テーパー開始）'},
+    {id:'mj07',date:'6/16 (月)',badge:'easy',bl:'軽いジョグ',type:'run',menu:'30分ジョグ'},
+    {id:'mj08',date:'6/17 (火)',badge:'easy',bl:'流し',type:'run',menu:'20分ジョグ + 流し100m×2'},
+    {id:'mj09',date:'6/18 (水)',badge:'rest',bl:'休養',type:'rest',menu:'完全休養'},
+    {id:'mj10',date:'6/19 (木)',badge:'easy',bl:'ジョグ',type:'run',menu:'20分ジョグ　<strong>6:00/km</strong>'},
+    {id:'mj11',date:'6/20 (金)',badge:'rest',bl:'休養',type:'rest',menu:'休養'},
+    {id:'mj12',date:'6/21 (土)',badge:'easy',bl:'体を動かす',type:'run',menu:'2km（体を動かすだけ）'},
+  ],
+  'm-race':[
+    {id:'mr01',date:'6/22 (日)',badge:'race',bl:'🎯 本番！',type:'run',menu:'<strong>函館マラソン 本番！</strong>　ペース：<strong>5:40/km</strong> → サブ4達成'},
+  ]
+};
+
+// Hyrox sessions — 土曜と月曜を毎週生成（3/29から）
+// 3/25(水)スタートなので最初の土曜は3/29
+const HS = {
+  'h-march':[
+    {id:'hm01',date:'3/29 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hm02',date:'3/31 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+  ],
+  'h-april':[
+    {id:'ha01',date:'4/5 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'ha02',date:'4/7 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'ha03',date:'4/12 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'ha04',date:'4/14 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'ha05',date:'4/19 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'ha06',date:'4/21 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'ha07',date:'4/26 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'ha08',date:'4/28 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+  ],
+  'h-may':[
+    {id:'hy01',date:'5/3 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hy02',date:'5/5 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hy03',date:'5/10 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hy04',date:'5/12 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hy05',date:'5/17 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hy06',date:'5/19 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hy07',date:'5/24 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hy08',date:'5/26 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hy09',date:'5/31 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+  ],
+  'h-june':[
+    {id:'hj01',date:'6/2 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hj02',date:'6/7 (土)',badge:'hyrox',bl:'Hyrox 土曜',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー',hyroxType:'sat'},
+    {id:'hj03',date:'6/9 (月)',badge:'hyrox',bl:'Hyrox 月曜',type:'hyrox',menu:'Hyrox トレーニング　月曜日メニュー',hyroxType:'mon'},
+    {id:'hj04',date:'6/14 (土)',badge:'hyrox',bl:'Hyrox 土曜（軽め）',type:'hyrox',menu:'Hyrox トレーニング　土曜日メニュー（テーパー：軽め）',hyroxType:'sat'},
+  ]
+};
+
+// ── Storage ────────────────────────────
+function load(k,d){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
+function persist(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let ck=load('trk4_checked',{});
+let km=load('trk4_kms',{});
+let pc=JSON.parse(JSON.stringify(ck));
+let pk=JSON.parse(JSON.stringify(km));
+
+function markUnsaved(){
+  document.getElementById('unsaved-dot').classList.add('show');
+  document.getElementById('save-status-text').textContent='未保存の変更があります';
+  const b=document.getElementById('save-btn');b.textContent='💾 保存する';b.classList.remove('saved');
+}
+function saveAll(){
+  ck=JSON.parse(JSON.stringify(pc));km=JSON.parse(JSON.stringify(pk));
+  persist('trk4_checked',ck);persist('trk4_kms',km);
+  document.getElementById('unsaved-dot').classList.remove('show');
+  document.getElementById('save-status-text').textContent='保存しました ✓';
+  const b=document.getElementById('save-btn');b.classList.add('saved');b.textContent='✓ 保存しました';
+  setTimeout(()=>{b.textContent='💾 保存する';b.classList.remove('saved');document.getElementById('save-status-text').textContent='まだ未保存の変更はありません';},2500);
+}
+
+// ── Mode & tab switching ───────────────
+let currentMode='marathon';
+function switchMode(mode){
+  currentMode=mode;
+  document.querySelectorAll('.mode-tab').forEach(t=>t.className='mode-tab');
+  document.getElementById('mtab-'+mode).classList.add('active-'+mode);
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+mode).classList.add('active');
+}
+function switchSub(mode,key,el){
+  const prefix=mode==='marathon'?'m-':'h-';
+  const tabs=document.getElementById(mode+'-tabs');
+  tabs.querySelectorAll('.sub-tab').forEach(t=>{t.classList.remove('active-marathon','active-hyrox');});
+  el.classList.add('active-'+mode);
+  // hide all sections in this mode
+  const allSections=mode==='marathon'
+    ?['m-march','m-april','m-may','m-june','m-race']
+    :['h-march','h-april','h-may','h-june'];
+  allSections.forEach(k=>{document.getElementById(k).classList.remove('active');});
+  document.getElementById(key).classList.add('active');
+}
+
+// ── Render ─────────────────────────────
+const BC={long:'badge-long',tempo:'badge-tempo',interval:'badge-interval',easy:'badge-easy',rest:'badge-rest',race:'badge-race',hyrox:'badge-hyrox'};
+
+function renderSection(key, sessions){
+  const el=document.getElementById(key);if(!el)return;
+  const isHyrox=key.startsWith('h-');
+  let h='';
+  sessions.forEach(s=>{
+    const done=!!pc[s.id],isR=s.type==='rest',isH=s.type==='hyrox';
+    const v=pk[s.id]||'';
+    const doneClass=isH?'done-h':'done-m';
+    const chkClass=isH?'chk-h':'chk-m';
+    h+=`<div class="day-card ${done?doneClass:''} ${isR&&!done?'is-rest':''} ${isH?'hyrox-card':''}">
+      <div class="checkbox ${done?chkClass:''}" onclick="toggle('${s.id}','${isH?'h':'m'}')"></div>
+      <div class="day-info">
+        <div class="day-header">
+          <span class="day-date">${s.date}</span>
+          <span class="day-badge ${BC[s.badge]}">${s.bl}</span>
+          ${v?`<span class="km-badge ${isH?'km-badge-h':'km-badge-m'}">${v}km</span>`:''}
+        </div>
+        <div class="day-menu">${s.menu}</div>
+        ${isH&&s.hyroxType?hyroxTable(s.hyroxType):''}
+        ${!isR?`<div class="km-row"><input class="km-input ${isH?'':'focus-m'}" type="number" min="0" max="99" step="0.1" placeholder="0.0" value="${v}" oninput="onKm('${s.id}',this.value,'${isH?'h':'m'}')" id="km-${s.id}"/><span class="km-unit">km 走った</span></div>`:''}
+      </div></div>`;
+  });
+  el.innerHTML=h;
+}
+
+function toggle(id,mode){pc[id]=!pc[id];markUnsaved();updateAll();}
+function onKm(id,val,mode){
+  const n=parseFloat(val);pk[id]=(val===''||isNaN(n))?'':Math.round(n*10)/10;
+  markUnsaved();
+  updateStats();renderCharts();
+  const hdr=document.querySelector(`#km-${id}`)?.closest('.day-info')?.querySelector('.day-header');
+  if(hdr){
+    const isH=mode==='h';
+    let ex=hdr.querySelector('.km-badge');
+    if(pk[id]){
+      if(!ex){ex=document.createElement('span');ex.className='km-badge '+(isH?'km-badge-h':'km-badge-m');hdr.appendChild(ex);}
+      ex.textContent=pk[id]+'km';
+    }else if(ex){ex.remove();}
+  }
+}
+
+function updateStats(){
+  // Marathon
+  const mall=Object.values(MS).flat(),mactive=mall.filter(s=>s.type!=='rest');
+  const mdone=mactive.filter(s=>pc[s.id]).length,mpct=mactive.length?Math.round(mdone/mactive.length*100):0;
+  const mtot=Object.values(MS).flat().filter(s=>s.type==='run').reduce((s,v)=>s+(parseFloat(pk[v.id])||0),0);
+  document.getElementById('m-done').textContent=mdone;
+  document.getElementById('m-pct').textContent=mpct+'%';
+  document.getElementById('m-km').textContent=Math.round(mtot*10)/10;
+  document.getElementById('m-prog-fill').style.width=mpct+'%';
+  document.getElementById('m-prog-label').textContent=`${mdone} / ${mactive.length} セッション`;
+  let mst=0;const mids=mactive.map(s=>s.id);
+  for(let i=mids.length-1;i>=0;i--){if(pc[mids[i]])mst++;else break;}
+  document.getElementById('m-streak').textContent=mst;
+
+  // Hyrox
+  const hall=Object.values(HS).flat();
+  const hdone=hall.filter(s=>pc[s.id]).length,hpct=hall.length?Math.round(hdone/hall.length*100):0;
+  const htot=hall.reduce((s,v)=>s+(parseFloat(pk[v.id])||0),0);
+  document.getElementById('h-done').textContent=hdone;
+  document.getElementById('h-pct').textContent=hpct+'%';
+  document.getElementById('h-km').textContent=Math.round(htot*10)/10;
+  document.getElementById('h-prog-fill').style.width=hpct+'%';
+  document.getElementById('h-prog-label').textContent=`${hdone} / ${hall.length} セッション`;
+  let hst=0;const hids=hall.map(s=>s.id);
+  for(let i=hids.length-1;i>=0;i--){if(pc[hids[i]])hst++;else break;}
+  document.getElementById('h-streak').textContent=hst;
+}
+
+function renderCharts(){
+  // Marathon chart
+  const mruns=Object.values(MS).flat().filter(s=>s.type==='run');
+  const mvals=mruns.map(s=>parseFloat(pk[s.id])||0);
+  const mmx=Math.max(...mvals,1),mtot=mvals.reduce((a,b)=>a+b,0);
+  document.getElementById('m-chart-total').textContent=`合計 ${Math.round(mtot*10)/10} km`;
+  document.getElementById('m-bar-chart').innerHTML=mruns.map((s,i)=>{
+    const h=Math.max(Math.round((mvals[i]/mmx)*100),mvals[i]>0?4:0);
+    return `<div class="bar-col"><div class="bar-wrap"><div class="bar" style="height:${h}%;background:${mvals[i]>0?'var(--orange)':'var(--surface2)'};" data-v="${mvals[i]}km"></div></div><div class="bar-label">${s.date.split(' ')[0]}</div></div>`;
+  }).join('');
+
+  // Hyrox chart
+  const hruns=Object.values(HS).flat();
+  const hvals=hruns.map(s=>parseFloat(pk[s.id])||0);
+  const hmx=Math.max(...hvals,1),htot=hvals.reduce((a,b)=>a+b,0);
+  document.getElementById('h-chart-total').textContent=`合計 ${Math.round(htot*10)/10} km`;
+  document.getElementById('h-bar-chart').innerHTML=hruns.map((s,i)=>{
+    const h=Math.max(Math.round((hvals[i]/hmx)*100),hvals[i]>0?4:0);
+    return `<div class="bar-col"><div class="bar-wrap"><div class="bar" style="height:${h}%;background:${hvals[i]>0?'var(--purple)':'var(--surface2)'};" data-v="${hvals[i]}km"></div></div><div class="bar-label">${s.date.split(' ')[0]}</div></div>`;
+  }).join('');
+}
+
+function updateAll(){
+  Object.keys(MS).forEach(k=>renderSection(k,MS[k]));
+  Object.keys(HS).forEach(k=>renderSection(k,HS[k]));
+  updateStats();renderCharts();
+}
+updateAll();
+</script>
+</body>
+</html>
